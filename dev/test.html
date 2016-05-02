@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Test</title>
+	<meta charset="utf-8">
+</head>
+<body>
+	<div class="teemu-window">This is a .window</div>
+	<div id="teemu-window">This is a #window</div>
+	<script type="text/javascript" src="te_emu.js"></script>
+	<script type="text/javascript" charset="utf-8" defer>
+		// Test scripts
+		var t = new Te_emu();
+		t.addCommand({
+			key: 'defaultOps',
+			flat: true
+		});
+		t.addCommand({
+			key: 'runOps',
+			defaultFx: function(){
+				console.log("I'm not the default function!");
+			}
+		});
+		t.addOperation('runOps', {
+			key: 'newOp',
+			fx: function(){
+				console.log("This is an operation of runOps");
+			},
+			flags: {
+				"-p": "I print this message",
+				"--hello": "Hi there!"
+			}
+		});
+	</script>
+</body>
+</html>
