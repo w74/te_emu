@@ -14,11 +14,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 *	@license: MPL-2.0
 *	@contents:
 *		I. Command Class
+*			-. Constructor
+*			A. Methods
 *		II. Te_emu Class
 *			-. Constructor
-*			A. Getters & Setters
-*			B. Methods
-*			C. Helper Functions
+*			A. Methods
+*			B. Helper Functions
 *		
 ************************************************/
 
@@ -37,6 +38,7 @@ var Command = function () {
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
 			console.log(_this);
+			console.log('default');
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
 		var flat = _ref$flat === undefined ? false : _ref$flat;
@@ -46,18 +48,95 @@ var Command = function () {
 		this.default = defaultFx, this.flat = Boolean(flat);
 	}
 
+	// A. Methods
+
 	/**
-  *  Static Function validate
-  *  	-> validates parameters to be of appropriate type and/or value
-  *  @return {Boolean} -> true if no errors, false otherwise
+  * 	Function addOperation
+  * 		-> adds an user-defined operation to the command
+  *  @param {String} key -> operation name
+  *  @param {Function} fx -> function to be executed on operation invokation
+  *  @param {Object} flags -> optional flags to alter fx's behavior
   */
 
 
-	_createClass(Command, null, [{
-		key: "validate",
-		value: function validate(_ref2) {
+	_createClass(Command, [{
+		key: "addOperation",
+		value: function addOperation(_ref2) {
 			var key = _ref2.key;
-			var defaultFx = _ref2.defaultFx;
+			var fx = _ref2.fx;
+			var flags = _ref2.flags;
+
+			if (this.flat) {
+				console.error("Command is flat");
+				return;
+			} else if (typeof key !== "string") {
+				console.error("Invalid: key not of type String");
+				return;
+			} else if (!(fx instanceof Function)) {
+				console.error("Invalid: fx not a Function");
+				return;
+			} else if (flags) {
+				if (!(flags instanceof Object) || flags instanceof Array) {
+					console.error("Invalid: flags not of type Object");
+					return;
+				} else {
+					for (var f in flags) {
+						if (!/^-{1,2}/.test(f)) {
+							console.error("all flags start with either - or --");
+							return;
+						}
+						if (/^-h$|^--help$/.test(f)) {
+							console.error("-h and --help are reserved");
+							return;
+						}
+					}
+				}
+			}
+
+			if (!("operations" in this)) this.operations = {};
+			this.operations[key] = {
+				'fx': fx,
+				'help': function help() {
+					console.log(this);
+					console.log('helper');
+				},
+				'flags': flags
+			};
+		}
+
+		/**
+   *  Function invoke
+   *  	-> calls an operation and passes variables to it
+   *  @param {String} operation -> operation to be called
+   *  @param {Array} args -> arguments, Array is in order of user submission
+   *  @param {{Array} flags -> flags, Array is in order of user submission
+   */
+
+	}, {
+		key: "invoke",
+		value: function invoke(_ref3) {
+			var operation = _ref3.operation;
+			var args = _ref3.args;
+			var flags = _ref3.flags;
+
+			if (operation && this.operations[operation]) {
+				this.operations[operation].fx.call(this, args, flags);
+			} else {
+				this.default.call(this, args, flags);
+			}
+		}
+
+		/**
+   *  Static Function validate
+   *  	-> validates parameters to be of appropriate type and/or value
+   *  @return {Boolean} -> true if no errors, false otherwise
+   */
+
+	}], [{
+		key: "validate",
+		value: function validate(_ref4) {
+			var key = _ref4.key;
+			var defaultFx = _ref4.defaultFx;
 
 			if (typeof key !== "string") {
 				console.error("Invalid: key not of type String");
@@ -71,10 +150,7 @@ var Command = function () {
 	}]);
 
 	return Command;
-}();
-
-// II. Te_emu Class
-
+}(); // End of Command class
 
 var TE_EMU_DEFAULTS = {
 	//v1.0 functionalities -> DOM Elements Integration
@@ -84,9 +160,16 @@ var TE_EMU_DEFAULTS = {
 
 	//v1.1 functionalities
 	//scaffold: automatically add DOM elements to this.window
-};
+}; // End of const
+
+// II. Te_emu Class
 
 var Te_emu = function () {
+	/**
+  *  Constructor
+  *  @param {Object} opts -> settings to overwrite default settings
+  */
+
 	function Te_emu() {
 		var opts = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
@@ -96,7 +179,14 @@ var Te_emu = function () {
 		this.commands = {};
 	}
 
-	// B. Methods
+	// A. Methods
+
+	/**
+  *  Function addCommand
+  *  	-> adds a new callable command to the terminal
+  *  @param {Object} obj -> object required to construct new Command
+  */
+
 
 	_createClass(Te_emu, [{
 		key: "addCommand",
@@ -112,58 +202,40 @@ var Te_emu = function () {
 		}
 
 		/**
-   * 	Function addOperation
-   * 		-> adds an operation associated with a command
-   * 	@param {String} cName -> command name
-   *  @param {String} key -> operation name
-   *  @param {Function} fx -> function to be executed on operation invokation
-   *  @param {Object} flags -> optional flags to alter fx's behavior
+   *  Function parse
+   *  	-> takes user inputted string and prepares it for invokation by Command Object
+   *  @param  {String} str -> user input
    */
 
 	}, {
-		key: "addOperation",
-		value: function addOperation(cName, _ref3) {
-			var key = _ref3.key;
-			var fx = _ref3.fx;
-			var flags = _ref3.flags;
-
-			// Check if the method is properly defined with a name and executable function
-			try {
-				if (!(cName in this.commands)) throw "no command by that name";
-				if (typeof key !== "string") throw "key (type String)";
-				if (!(fx instanceof Function)) throw "fx (type Function)";
-
-				if (typeof flags !== "undefined") {
-					if (!(flags instanceof Object) || flags instanceof Array) throw "flags (type Object)";else {
-						for (var f in flags) {
-							if (!/^-{1,2}/.test(f)) throw "flag `" + f + "` needs to begin with either - or --";
-							if (/^-h$|^--help$/.test(f)) throw "-h and --help flags are reserved and immutable";
-						}
-					}
-				}
-			} catch (e) {
-				console.error('Invalid/Missing:', e);
-			}
-			// Create the .ops Object if none exists
-			if (typeof this.commands[cName].ops === "undefined") this.commands[cName].ops = {};
-			var c = this.commands[cName].ops;
-			c[key] = {
-				'f': fx,
-				'help': function help() {
-					console.log(this);
-				}
-			};
-			if (typeof flags !== "undefined") {
-				c[key].flags = flags;
-			}
-		}
-	}, {
-		key: "invoke",
-		value: function invoke(str) {
+		key: "parse",
+		value: function parse(str) {
 			var s = str.split(" ");
-			// try{
-			// 	if(!(s[0] in this.commands)) throw s[0] + ": command not found";
-			// }
+			var c = s.shift();
+			// check if command exists
+			if (!this.commands[c]) {
+				console.error(c + ": command not found");
+				return;
+			}
+			if (!this.commands[c].flat) {
+				var o = s.shift();
+			}
+			// separate arguments and flags
+			var f = [],
+			    a = [];
+			for (var i = 0; i < s.length; i++) {
+				if (/^-{1,2}/.test(s[i])) {
+					f.push(s[i]);
+				} else {
+					a.push(s[i]);
+				}
+			}
+			// send data to Command Object and let it invoke appropriate response
+			this.commands[c].invoke({
+				operation: o,
+				flags: f,
+				args: a
+			});
 		}
 
 		/**
@@ -185,12 +257,12 @@ var Te_emu = function () {
 			}
 		}
 
-		// C. Helper Functions
+		// B. Helper Functions
 
 		/**
    *  Function extend
    *  	-> replicates functionality of $.extends() method
-   *  @!important -> modifies original values of parameter {a}
+   *  !important -> modifies original values of parameter {a}
    *  @param {Object} a -> object with default values
    *  @param {Object}} b -> object with modifier values
    *  @return {Object} Object a with updated values from Object b
@@ -220,10 +292,7 @@ var Te_emu = function () {
 			}
 			return a;
 		})
-	}, {
-		key: "printFlags",
-		value: function printFlags() {}
 	}]);
 
 	return Te_emu;
-}();
+}(); // End of Te_emu class

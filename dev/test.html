@@ -21,9 +21,9 @@
 				console.log("I'm not the default function!");
 			}
 		});
-		t.addOperation('runOps', {
+		t.commands.runOps.addOperation({
 			key: 'newOp',
-			fx: function(){
+			fx: function(argsArr, flagsArr){
 				console.log("This is an operation of runOps");
 			},
 			flags: {

@@ -6,11 +6,12 @@
 *	@license: MPL-2.0
 *	@contents:
 *		I. Command Class
+*			-. Constructor
+*			A. Methods
 *		II. Te_emu Class
 *			-. Constructor
-*			A. Getters & Setters
-*			B. Methods
-*			C. Helper Functions
+*			A. Methods
+*			B. Helper Functions
 *		
 ************************************************/
 
@@ -23,9 +24,74 @@ class Command{
 	 */
 	constructor({defaultFx = () => {
 			console.log(this);
+			console.log('default');
 		}, flat = false}){
 		this.default = defaultFx,
 		this.flat = Boolean(flat)
+	}
+
+	// A. Methods
+
+	/**
+	 * 	Function addOperation
+	 * 		-> adds an user-defined operation to the command
+	 *  @param {String} key -> operation name
+	 *  @param {Function} fx -> function to be executed on operation invokation
+	 *  @param {Object} flags -> optional flags to alter fx's behavior
+	 */
+	addOperation({key, fx, flags}){
+		if(this.flat){
+			console.error("Command is flat");
+			return;
+		} else if(typeof key !== "string"){
+			console.error("Invalid: key not of type String");
+			return;
+		} else if(!(fx instanceof Function)){
+			console.error("Invalid: fx not a Function");
+			return;
+		} else if(flags){
+			if(!(flags instanceof Object) || (flags instanceof Array)){
+				console.error("Invalid: flags not of type Object");
+				return;
+			} else {
+				for(let f in flags){
+					if(!/^-{1,2}/.test(f)){
+						console.error("all flags start with either - or --");
+						return;
+					}
+					if(/^-h$|^--help$/.test(f)){
+						console.error("-h and --help are reserved");
+						return;
+					}
+				}
+			}
+		}
+
+		if(!("operations" in this))
+			this.operations = {};
+		this.operations[key] = {
+			'fx': fx,
+			'help': function(){
+				console.log(this);
+				console.log('helper');
+			},
+			'flags': flags
+		};
+	}
+
+	/**
+	 *  Function invoke
+	 *  	-> calls an operation and passes variables to it
+	 *  @param {String} operation -> operation to be called
+	 *  @param {Array} args -> arguments, Array is in order of user submission
+	 *  @param {{Array} flags -> flags, Array is in order of user submission
+	 */
+	invoke({operation, args, flags}){
+		if(operation && this.operations[operation]){
+			this.operations[operation].fx.call(this, args, flags);
+		} else {
+			this.default.call(this, args, flags);
+		}
 	}
 
 	/**
@@ -43,10 +109,8 @@ class Command{
 		}
 		return false;
 	}
+} // End of Command class
 
-}
-
-// II. Te_emu Class
 const TE_EMU_DEFAULTS = {
 	//v1.0 functionalities -> DOM Elements Integration
 	//commandLine: [".teemu-cl", "#teemu-cl"],
@@ -55,16 +119,26 @@ const TE_EMU_DEFAULTS = {
 	
 	//v1.1 functionalities
 	//scaffold: automatically add DOM elements to this.window
-};
+}; // End of const
 
+// II. Te_emu Class
 class Te_emu{
+	/**
+	 *  Constructor
+	 *  @param {Object} opts -> settings to overwrite default settings
+	 */
 	constructor(opts = {}){
 		this.options = this.extend(TE_EMU_DEFAULTS, opts);
 		this.commands = {};
 	}
 
-	// B. Methods
-	
+	// A. Methods
+
+	/**
+	 *  Function addCommand
+	 *  	-> adds a new callable command to the terminal
+	 *  @param {Object} obj -> object required to construct new Command
+	 */
 	addCommand(obj){
 		// validates obj type of Object
 		if(!(obj instanceof Object) || (obj instanceof Array)){
@@ -77,53 +151,36 @@ class Te_emu{
 	}
 
 	/**
-	 * 	Function addOperation
-	 * 		-> adds an operation associated with a command
-	 * 	@param {String} cName -> command name
-	 *  @param {String} key -> operation name
-	 *  @param {Function} fx -> function to be executed on operation invokation
-	 *  @param {Object} flags -> optional flags to alter fx's behavior
+	 *  Function parse
+	 *  	-> takes user inputted string and prepares it for invokation by Command Object
+	 *  @param  {String} str -> user input
 	 */
-	addOperation(cName, {key, fx, flags}){
-		// Check if the method is properly defined with a name and executable function
-		try{
-			if(!(cName in this.commands)) throw "no command by that name";
-			if(typeof key !== "string") throw "key (type String)";
-			if(!(fx instanceof Function)) throw "fx (type Function)";
-
-			if(typeof flags !== "undefined"){
-				if(!(flags instanceof Object) || (flags instanceof Array)) throw "flags (type Object)";
-				else{ 
-					for(let f in flags){
-						if(!/^-{1,2}/.test(f)) throw "flag `" + f + "` needs to begin with either - or --";
-						if(/^-h$|^--help$/.test(f)) throw "-h and --help flags are reserved and immutable";
-					}
-				}
-			}
-		} catch(e) {
-			console.error('Invalid/Missing:', e);
-		}
-		// Create the .ops Object if none exists
-		if(typeof this.commands[cName].ops === "undefined")
-			this.commands[cName].ops = {};
-		var c = this.commands[cName].ops;
-		c[key] = {
-			'f': fx,
-			'help': function(){
-				console.log(this);
-			}
-		};
-		if(typeof flags !== "undefined"){
-			c[key].flags = flags;
-		}
-	}
-
-
-	invoke(str){
+	parse(str){
 		let s = str.split(" ");
-		// try{
-		// 	if(!(s[0] in this.commands)) throw s[0] + ": command not found";
-		// }
+		var c = s.shift();
+		// check if command exists
+		if(!this.commands[c]){
+			console.error(c + ": command not found");
+			return;
+		}
+		if(!this.commands[c].flat){
+			var o = s.shift();
+		}
+		// separate arguments and flags
+		let f = [], a = [];
+		for(let i = 0; i < s.length; i++){
+			if(/^-{1,2}/.test(s[i])){
+				f.push(s[i]);
+			} else {
+				a.push(s[i]);
+			}
+		}
+		// send data to Command Object and let it invoke appropriate response
+		this.commands[c].invoke({
+			operation: o,
+			flags: f,
+			args: a
+		});
 	}
 
 	/**
@@ -142,12 +199,12 @@ class Te_emu{
 		}
 	}
 
-	// C. Helper Functions
+	// B. Helper Functions
 
 	/**
 	 *  Function extend
 	 *  	-> replicates functionality of $.extends() method
-	 *  @!important -> modifies original values of parameter {a}
+	 *  !important -> modifies original values of parameter {a}
 	 *  @param {Object} a -> object with default values
 	 *  @param {Object}} b -> object with modifier values
 	 *  @return {Object} Object a with updated values from Object b
@@ -164,6 +221,4 @@ class Te_emu{
 		}
 		return a;
 	}
-
-	printFlags(){}
-}
+} // End of Te_emu class
