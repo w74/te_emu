@@ -3,9 +3,14 @@
 <head>
 	<title>Test</title>
 	<meta charset="utf-8">
+	<style type="text/css" media="screen">
+		code{
+			display: block;
+			white-space: pre-wrap;
+		}
+	</style>
 </head>
 <body>
-	<div class="teemu-window">This is a .window</div>
 	<div id="teemu-window">This is a #window</div>
 	<script type="text/javascript" src="te_emu.js"></script>
 	<script type="text/javascript" charset="utf-8" defer>
@@ -16,19 +21,34 @@
 			flat: true
 		});
 		t.addCommand({
-			key: 'runOps',
-			defaultFx: function(){
-				console.log("I'm not the default function!");
-			}
+			key: 'runOps'
 		});
 		t.commands.runOps.addOperation({
 			key: 'newOp',
 			fx: function(argsArr, flagsArr){
 				console.log("This is an operation of runOps");
+				this.console.output('Execution complete');
 			},
+			format: "runOps newOp <argument> [flags]",
 			flags: {
 				"-p": "I print this message",
 				"--hello": "Hi there!"
+			}
+		});
+		t.commands.runOps.addOperation({
+			key: 'hello',
+			fx: function(argsArr, flagsArr){
+				var str = "Hello World";
+				if(flagsArr.indexOf('-e') > -1)
+					str += '!';
+				if(flagsArr.indexOf('-q') > -1)
+					str += '?';
+				this.console.output(str);
+			},
+			format: "runOps hello [flags]",
+			flags: {
+				"-e": "append an exclaimation point",
+				"-q": "append a question mark"
 			}
 		});
 	</script>

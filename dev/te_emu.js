@@ -32,20 +32,22 @@ var Command = function () {
   *  @param {Boolean} flat -> if defined, the Command will be "flat" and will only run the default Function
   */
 
-	function Command(_ref) {
+	function Command(console, _ref) {
 		var _this = this;
 
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
-			console.log(_this);
-			console.log('default');
+			if (_this.flat) _this.console.output("Command is flat; no operations attached");else {
+				_this.console.output("Available Operations:");
+				_this.console.output(Object.keys(_this.operations).join(', '));
+			}
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
 		var flat = _ref$flat === undefined ? false : _ref$flat;
 
 		_classCallCheck(this, Command);
 
-		this.default = defaultFx, this.flat = Boolean(flat);
+		this.default = defaultFx, this.flat = Boolean(flat), this.console = console;
 	}
 
 	// A. Methods
@@ -54,7 +56,9 @@ var Command = function () {
   * 	Function addOperation
   * 		-> adds an user-defined operation to the command
   *  @param {String} key -> operation name
-  *  @param {Function} fx -> function to be executed on operation invokation
+  *  @param {Function} fx -> function to execute for operation
+  *  @param {String} format -> reference to call this operation
+  *    ex. "command operation <argument(s)> [flag(s)]"
   *  @param {Object} flags -> optional flags to alter fx's behavior
   */
 
@@ -62,46 +66,30 @@ var Command = function () {
 	_createClass(Command, [{
 		key: "addOperation",
 		value: function addOperation(_ref2) {
+			var _this2 = this;
+
 			var key = _ref2.key;
 			var fx = _ref2.fx;
+			var format = _ref2.format;
 			var flags = _ref2.flags;
 
 			if (this.flat) {
 				console.error("Command is flat");
-				return;
-			} else if (typeof key !== "string") {
-				console.error("Invalid: key not of type String");
-				return;
-			} else if (!(fx instanceof Function)) {
-				console.error("Invalid: fx not a Function");
-				return;
-			} else if (flags) {
-				if (!(flags instanceof Object) || flags instanceof Array) {
-					console.error("Invalid: flags not of type Object");
-					return;
-				} else {
-					for (var f in flags) {
-						if (!/^-{1,2}/.test(f)) {
-							console.error("all flags start with either - or --");
-							return;
-						}
-						if (/^-h$|^--help$/.test(f)) {
-							console.error("-h and --help are reserved");
-							return;
-						}
-					}
-				}
+			} else if (Command.validateOp({ key: key, fx: fx, format: format, flags: flags })) {
+				if (!("operations" in this)) this.operations = {};
+				this.operations[key] = {
+					'fx': fx,
+					'format': format,
+					'help': function help() {
+						_this2.console.output(["Operation syntax:", format + "\r\n" + "-".repeat(24), "Available flags:"]);
+						var fs = [];
+						for (var f in _this2.operations[key].flags) {
+							fs.push(f + " ".repeat(24 - f.length) + _this2.operations[key].flags[f]);
+						}_this2.console.output(fs);
+					},
+					'flags': flags
+				};
 			}
-
-			if (!("operations" in this)) this.operations = {};
-			this.operations[key] = {
-				'fx': fx,
-				'help': function help() {
-					console.log(this);
-					console.log('helper');
-				},
-				'flags': flags
-			};
 		}
 
 		/**
@@ -115,12 +103,16 @@ var Command = function () {
 	}, {
 		key: "invoke",
 		value: function invoke(_ref3) {
-			var operation = _ref3.operation;
+			var key = _ref3.key;
 			var args = _ref3.args;
 			var flags = _ref3.flags;
 
-			if (operation && this.operations[operation]) {
-				this.operations[operation].fx.call(this, args, flags);
+			if (key && this.operations[key]) {
+				if (flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1) {
+					this.operations[key].help();
+				} else {
+					this.operations[key].fx.call(this, args, flags);
+				}
 			} else {
 				this.default.call(this, args, flags);
 			}
@@ -142,6 +134,47 @@ var Command = function () {
 				console.error("Invalid: key not of type String");
 			} else if (typeof defaultFx !== "undefined" && typeof defaultFx !== "function") {
 				console.error("Invalid: defaultFx not a Function");
+			} else {
+				return true;
+			}
+			return false;
+		}
+
+		/**
+   *  Function validateOp
+   *  	-> validates arguments to be added to a new Operation
+   *  @param {String} key -> operation name
+   *  @param {Function} fx -> function to execute for operation
+   *  @param {String} format -> reference to call this operation
+   *    ex. "command operation <argument(s)> [flag(s)]"
+   *  @param {Object} flags -> optional flags to alter fx's behavior
+   *  @return {Boolean} -> returns true if valid, false otherwise
+   */
+
+	}, {
+		key: "validateOp",
+		value: function validateOp(_ref5) {
+			var key = _ref5.key;
+			var fx = _ref5.fx;
+			var format = _ref5.format;
+			var flags = _ref5.flags;
+
+			if (typeof key !== "string") {
+				console.error("Invalid: key not of type String");
+			} else if (!(fx instanceof Function)) {
+				console.error("Invalid: fx not a Function");
+			} else if (flags && flags instanceof Object && !(flags instanceof Array)) {
+				for (var f in flags) {
+					if (!/^-{1,2}/.test(f)) {
+						console.error("all flags start with either - or --");
+						return false;
+					}
+					if (/^-h$|^--help$/.test(f)) {
+						console.error("-h and --help are reserved");
+						return false;
+					}
+				}
+				return true;
 			} else {
 				return true;
 			}
@@ -175,7 +208,7 @@ var Te_emu = function () {
 
 		_classCallCheck(this, Te_emu);
 
-		this.options = this.extend(TE_EMU_DEFAULTS, opts);
+		this.options = Te_emu.extend(TE_EMU_DEFAULTS, opts);
 		this.commands = {};
 	}
 
@@ -196,7 +229,7 @@ var Te_emu = function () {
 				console.error("addCommand: type Object expected; type " + (typeof obj === "undefined" ? "undefined" : _typeof(obj)) + " received");
 			} else {
 				if (Command.validate(obj)) {
-					this.commands[obj.key] = new Command(obj);
+					this.commands[obj.key] = new Command(this, obj);
 				}
 			}
 		}
@@ -214,7 +247,7 @@ var Te_emu = function () {
 			var c = s.shift();
 			// check if command exists
 			if (!this.commands[c]) {
-				console.error(c + ": command not found");
+				this.output(c + ": command not found");
 				return;
 			}
 			if (!this.commands[c].flat) {
@@ -232,28 +265,34 @@ var Te_emu = function () {
 			}
 			// send data to Command Object and let it invoke appropriate response
 			this.commands[c].invoke({
-				operation: o,
+				key: o,
 				flags: f,
 				args: a
 			});
 		}
 
 		/**
-   *	Function print
+   *	Function output
    * 		-> displays text to all windows as new DOM elements
-   *  @param {HTMLString} str -> message to be displayed; allows HTML tags
+   *  @param {String|Array} str -> message(s) to be displayed; allows HTML tags and entities
    */
 
 	}, {
 		key: "output",
 		value: function output(str) {
-			var newElement = document.createElement(this.options.dialogWrapper);
-			var newOutput = document.createTextNode(str);
-			newElement.appendChild(newOutput);
-
+			if (typeof str === "string") {
+				var str = [str];
+			}
 			var w = document.querySelectorAll(this.options.windows.join());
-			for (var i = 0; i < w.length; i++) {
-				w[i].insertAdjacentHTML('beforeend', newElement.outerHTML);
+
+			for (var i = 0; i < str.length; i++) {
+				var newElement = document.createElement(this.options.dialogWrapper);
+				var newOutput = document.createTextNode(str[i]);
+				newElement.appendChild(newOutput);
+
+				for (var j = 0; j < w.length; j++) {
+					w[j].insertAdjacentHTML('beforeend', newElement.outerHTML);
+				}
 			}
 		}
 
@@ -268,7 +307,7 @@ var Te_emu = function () {
    *  @return {Object} Object a with updated values from Object b
    */
 
-	}, {
+	}], [{
 		key: "extend",
 		value: function (_extend) {
 			function extend(_x, _x2) {

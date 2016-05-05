@@ -22,12 +22,17 @@ class Command{
 	 *  @param {Function} defaultFx -> fallback function, or if Command is "flat", the only executed function
 	 *  @param {Boolean} flat -> if defined, the Command will be "flat" and will only run the default Function
 	 */
-	constructor({defaultFx = () => {
-			console.log(this);
-			console.log('default');
-		}, flat = false}){
+	constructor(console, {defaultFx = () => {
+		if(this.flat)
+			this.console.output("Command is flat; no operations attached");
+		else{
+			this.console.output("Available Operations:");
+			this.console.output(Object.keys(this.operations).join(', '));
+		}
+	}, flat = false}){
 		this.default = defaultFx,
-		this.flat = Boolean(flat)
+		this.flat = Boolean(flat),
+		this.console = console
 	}
 
 	// A. Methods
@@ -36,47 +41,34 @@ class Command{
 	 * 	Function addOperation
 	 * 		-> adds an user-defined operation to the command
 	 *  @param {String} key -> operation name
-	 *  @param {Function} fx -> function to be executed on operation invokation
+	 *  @param {Function} fx -> function to execute for operation
+	 *  @param {String} format -> reference to call this operation
+	 *    ex. "command operation <argument(s)> [flag(s)]"
 	 *  @param {Object} flags -> optional flags to alter fx's behavior
 	 */
-	addOperation({key, fx, flags}){
+	addOperation({key, fx, format, flags}){
 		if(this.flat){
 			console.error("Command is flat");
-			return;
-		} else if(typeof key !== "string"){
-			console.error("Invalid: key not of type String");
-			return;
-		} else if(!(fx instanceof Function)){
-			console.error("Invalid: fx not a Function");
-			return;
-		} else if(flags){
-			if(!(flags instanceof Object) || (flags instanceof Array)){
-				console.error("Invalid: flags not of type Object");
-				return;
-			} else {
-				for(let f in flags){
-					if(!/^-{1,2}/.test(f)){
-						console.error("all flags start with either - or --");
-						return;
-					}
-					if(/^-h$|^--help$/.test(f)){
-						console.error("-h and --help are reserved");
-						return;
-					}
-				}
-			}
+		} else if(Command.validateOp({key, fx, format, flags})){
+			if(!("operations" in this))
+				this.operations = {};
+			this.operations[key] = {
+				'fx': fx,
+				'format': format,
+				'help': () => {
+					this.console.output([
+						"Operation syntax:",
+						format + "\r\n" + "-".repeat(24),
+						"Available flags:"
+					]);
+					let fs = [];
+					for(let f in this.operations[key].flags)
+						fs.push(f + " ".repeat(24 - f.length) + this.operations[key].flags[f]);
+					this.console.output(fs);
+				},
+				'flags': flags
+			};
 		}
-
-		if(!("operations" in this))
-			this.operations = {};
-		this.operations[key] = {
-			'fx': fx,
-			'help': function(){
-				console.log(this);
-				console.log('helper');
-			},
-			'flags': flags
-		};
 	}
 
 	/**
@@ -86,9 +78,13 @@ class Command{
 	 *  @param {Array} args -> arguments, Array is in order of user submission
 	 *  @param {{Array} flags -> flags, Array is in order of user submission
 	 */
-	invoke({operation, args, flags}){
-		if(operation && this.operations[operation]){
-			this.operations[operation].fx.call(this, args, flags);
+	invoke({key, args, flags}){
+		if(key && this.operations[key]){
+			if(flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1){
+				this.operations[key].help();
+			} else {
+				this.operations[key].fx.call(this, args, flags);	
+			}
 		} else {
 			this.default.call(this, args, flags);
 		}
@@ -104,6 +100,39 @@ class Command{
 			console.error("Invalid: key not of type String");
 		} else if(typeof defaultFx !== "undefined" && typeof defaultFx !== "function") {
 			console.error("Invalid: defaultFx not a Function");
+		} else {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 *  Function validateOp
+	 *  	-> validates arguments to be added to a new Operation
+	 *  @param {String} key -> operation name
+	 *  @param {Function} fx -> function to execute for operation
+	 *  @param {String} format -> reference to call this operation
+	 *    ex. "command operation <argument(s)> [flag(s)]"
+	 *  @param {Object} flags -> optional flags to alter fx's behavior
+	 *  @return {Boolean} -> returns true if valid, false otherwise
+	 */
+	static validateOp({key, fx, format, flags}){
+		if(typeof key !== "string"){
+			console.error("Invalid: key not of type String");
+		} else if(!(fx instanceof Function)){
+			console.error("Invalid: fx not a Function");
+		} else if(flags && (flags instanceof Object) && !(flags instanceof Array)){
+			for(let f in flags){
+				if(!/^-{1,2}/.test(f)){
+					console.error("all flags start with either - or --");
+					return false;
+				}
+				if(/^-h$|^--help$/.test(f)){
+					console.error("-h and --help are reserved");
+					return false;
+				}
+			}
+			return true;
 		} else {
 			return true;
 		}
@@ -128,7 +157,7 @@ class Te_emu{
 	 *  @param {Object} opts -> settings to overwrite default settings
 	 */
 	constructor(opts = {}){
-		this.options = this.extend(TE_EMU_DEFAULTS, opts);
+		this.options = Te_emu.extend(TE_EMU_DEFAULTS, opts);
 		this.commands = {};
 	}
 
@@ -145,7 +174,7 @@ class Te_emu{
 			console.error("addCommand: type Object expected; type " + typeof obj + " received");
 		} else {
 			if(Command.validate(obj)){
-				this.commands[obj.key] = new Command(obj);
+				this.commands[obj.key] = new Command(this, obj);
 			}
 		}
 	}
@@ -160,7 +189,7 @@ class Te_emu{
 		var c = s.shift();
 		// check if command exists
 		if(!this.commands[c]){
-			console.error(c + ": command not found");
+			this.output(c + ": command not found");
 			return;
 		}
 		if(!this.commands[c].flat){
@@ -177,25 +206,31 @@ class Te_emu{
 		}
 		// send data to Command Object and let it invoke appropriate response
 		this.commands[c].invoke({
-			operation: o,
+			key: o,
 			flags: f,
 			args: a
 		});
 	}
 
 	/**
-	 *	Function print
+	 *	Function output
 	 * 		-> displays text to all windows as new DOM elements
-	 *  @param {HTMLString} str -> message to be displayed; allows HTML tags
+	 *  @param {String|Array} str -> message(s) to be displayed; allows HTML tags and entities
 	 */
 	output(str){
-		let newElement = document.createElement(this.options.dialogWrapper);
-		let newOutput = document.createTextNode(str);
-		newElement.appendChild(newOutput);
-
+		if(typeof str === "string"){
+			var str = [str];
+		}
 		let w = document.querySelectorAll(this.options.windows.join());
-		for(var i = 0; i < w.length; i++){
-			w[i].insertAdjacentHTML('beforeend', newElement.outerHTML);
+
+		for(let i = 0; i < str.length; i++){
+			let newElement = document.createElement(this.options.dialogWrapper);
+			let newOutput = document.createTextNode(str[i]);
+			newElement.appendChild(newOutput);
+
+			for(let j = 0; j < w.length; j++){
+				w[j].insertAdjacentHTML('beforeend', newElement.outerHTML);
+			}
 		}
 	}
 
@@ -209,7 +244,7 @@ class Te_emu{
 	 *  @param {Object}} b -> object with modifier values
 	 *  @return {Object} Object a with updated values from Object b
 	 */
-	extend(a, b){
+	static extend(a, b){
 		for(let key in a){
 			if(b.hasOwnProperty(key)){
 				if((b[key] instanceof Object) && !(b[key] instanceof Array)){
