@@ -37,9 +37,9 @@ var Command = function () {
 
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
-			if (_this.flat) _this.console.output("Command is flat; no subcommands attached");else {
-				_this.console.output("Available Subcommands:");
-				_this.console.output(Object.keys(_this.subs).join(', '));
+			if (_this.flat) _this.console.output("Command is flat; no operations attached");else {
+				_this.console.output("Available Operations:");
+				_this.console.output(Object.keys(_this.operations).join(', '));
 			}
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
@@ -53,19 +53,19 @@ var Command = function () {
 	// A. Methods
 
 	/**
-  * 	Function addSub
-  * 		-> adds an user-defined subcommand to the command
-  *  @param {String} key -> subcommand name
-  *  @param {Function} fx -> function to execute for subcommand
-  *  @param {String} format -> reference to call this subcommand
-  *    ex. "command subcommand <argument(s)> [flag(s)]"
+  * 	Function addOperation
+  * 		-> adds an user-defined operation to the command
+  *  @param {String} key -> operation name
+  *  @param {Function} fx -> function to execute for operation
+  *  @param {String} format -> reference to call this operation
+  *    ex. "command operation <argument(s)> [flag(s)]"
   *  @param {Object} flags -> optional flags to alter fx's behavior
   */
 
 
 	_createClass(Command, [{
-		key: "addSub",
-		value: function addSub(_ref2) {
+		key: "addOperation",
+		value: function addOperation(_ref2) {
 			var _this2 = this;
 
 			var key = _ref2.key;
@@ -75,18 +75,17 @@ var Command = function () {
 
 			if (this.flat) {
 				console.error("Command is flat");
-			} else if (Command.validateSub({ key: key, fx: fx, format: format, flags: flags })) {
-				if (!("subs" in this)) this.subs = {};
-				this.subs[key] = {
+			} else if (Command.validateOp({ key: key, fx: fx, format: format, flags: flags })) {
+				if (!("operations" in this)) this.operations = {};
+				this.operations[key] = {
 					'fx': fx,
 					'format': format,
 					'help': function help() {
-						var out = [];
-						if (format) out.push("Command syntax:", format, "-".repeat(24));
-						out.push("Available flags:");
-						for (var f in flags) {
-							out.push(f + " ".repeat(24 - f.length) + flags[f]);
-						}_this2.console.output(out);
+						_this2.console.output(["Operation syntax:", format + "\r\n" + "-".repeat(24), "Available flags:"]);
+						var fs = [];
+						for (var f in _this2.operations[key].flags) {
+							fs.push(f + " ".repeat(24 - f.length) + _this2.operations[key].flags[f]);
+						}_this2.console.output(fs);
 					},
 					'flags': flags
 				};
@@ -95,8 +94,8 @@ var Command = function () {
 
 		/**
    *  Function invoke
-   *  	-> calls an subcommand and passes variables to it
-   *  @param {String} key -> subcommand to be called
+   *  	-> calls an operation and passes variables to it
+   *  @param {String} operation -> operation to be called
    *  @param {Array} args -> arguments, Array is in order of user submission
    *  @param {{Array} flags -> flags, Array is in order of user submission
    */
@@ -108,11 +107,11 @@ var Command = function () {
 			var args = _ref3.args;
 			var flags = _ref3.flags;
 
-			if (key && this.subs[key]) {
+			if (key && this.operations[key]) {
 				if (flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1) {
-					this.subs[key].help();
+					this.operations[key].help();
 				} else {
-					this.subs[key].fx.call(this, args, flags);
+					this.operations[key].fx.call(this, args, flags);
 				}
 			} else {
 				this.default.call(this, args, flags);
@@ -143,18 +142,18 @@ var Command = function () {
 
 		/**
    *  Function validateOp
-   *  	-> validates arguments to be added to a new Subcommand
-   *  @param {String} key -> subcommand name
-   *  @param {Function} fx -> function to execute for subcommand
-   *  @param {String} format -> reference to call this subcommand
-   *    ex. "command subcommand <argument(s)> [flag(s)]"
+   *  	-> validates arguments to be added to a new Operation
+   *  @param {String} key -> operation name
+   *  @param {Function} fx -> function to execute for operation
+   *  @param {String} format -> reference to call this operation
+   *    ex. "command operation <argument(s)> [flag(s)]"
    *  @param {Object} flags -> optional flags to alter fx's behavior
    *  @return {Boolean} -> returns true if valid, false otherwise
    */
 
 	}, {
-		key: "validateSub",
-		value: function validateSub(_ref5) {
+		key: "validateOp",
+		value: function validateOp(_ref5) {
 			var key = _ref5.key;
 			var fx = _ref5.fx;
 			var format = _ref5.format;
@@ -188,9 +187,9 @@ var Command = function () {
 
 var TE_EMU_DEFAULTS = {
 	commandLine: [".teemu-cl", "#teemu-cl"],
-	outputEl: "code",
+	dialogWrapper: "code",
 	windows: [".teemu-window", "#teemu-window"],
-	prompt: "$",
+	prefix: "[user@te_emu ~]$ ",
 	defaultCommands: {
 		clear: new Command(undefined, {
 			defaultFx: function defaultFx() {
@@ -223,7 +222,7 @@ var Te_emu = function () {
 		for (var i = 0; i < cl.length; i++) {
 			cl[i].addEventListener('keypress', function (e) {
 				if (e.which === 13) {
-					self.output(self.options.prompt + " " + this.value);
+					self.output(self.options.prefix + this.value);
 					self.parse(this.value);
 					this.value = "";
 				}
@@ -234,25 +233,13 @@ var Te_emu = function () {
 	// A. Methods
 
 	/**
-  *  Getter cmd -> get a Command
-  *  @param {String} 'key' -> keyword of Command to get
-  *  @return {Object} -> Command if found, false otherwise
+  *  Function addCommand
+  *  	-> adds a new callable command to the terminal
+  *  @param {Object} obj -> object required to construct new Command
   */
 
 
 	_createClass(Te_emu, [{
-		key: "cmd",
-		value: function cmd(key) {
-			return Boolean(this.commands[key]) ? this.commands[key] : false;
-		}
-
-		/**
-   *  Function addCommand
-   *  	-> adds a new callable command to the terminal
-   *  @param {Object} obj -> object required to construct new Command
-   */
-
-	}, {
 		key: "addCommand",
 		value: function addCommand(obj) {
 			// validates obj type of Object
@@ -317,7 +304,7 @@ var Te_emu = function () {
 			var win = document.querySelectorAll(this.options.windows.join());
 
 			for (var i = 0; i < str.length; i++) {
-				var newElement = document.createElement(this.options.outputEl);
+				var newElement = document.createElement(this.options.dialogWrapper);
 				var newOutput = document.createTextNode(str[i]);
 				newElement.appendChild(newOutput);
 

@@ -24,10 +24,10 @@ class Command{
 	 */
 	constructor(console, {defaultFx = () => {
 		if(this.flat)
-			this.console.output("Command is flat; no operations attached");
+			this.console.output("Command is flat; no subcommands attached");
 		else{
-			this.console.output("Available Operations:");
-			this.console.output(Object.keys(this.operations).join(', '));
+			this.console.output("Available Subcommands:");
+			this.console.output(Object.keys(this.subs).join(', '));
 		}
 	}, flat = false}){
 		this.default = defaultFx,
@@ -38,33 +38,31 @@ class Command{
 	// A. Methods
 
 	/**
-	 * 	Function addOperation
-	 * 		-> adds an user-defined operation to the command
-	 *  @param {String} key -> operation name
-	 *  @param {Function} fx -> function to execute for operation
-	 *  @param {String} format -> reference to call this operation
-	 *    ex. "command operation <argument(s)> [flag(s)]"
+	 * 	Function addSub
+	 * 		-> adds an user-defined subcommand to the command
+	 *  @param {String} key -> subcommand name
+	 *  @param {Function} fx -> function to execute for subcommand
+	 *  @param {String} format -> reference to call this subcommand
+	 *    ex. "command subcommand <argument(s)> [flag(s)]"
 	 *  @param {Object} flags -> optional flags to alter fx's behavior
 	 */
-	addOperation({key, fx, format, flags}){
+	addSub({key, fx, format, flags}){
 		if(this.flat){
 			console.error("Command is flat");
-		} else if(Command.validateOp({key, fx, format, flags})){
-			if(!("operations" in this))
-				this.operations = {};
-			this.operations[key] = {
+		} else if(Command.validateSub({key, fx, format, flags})){
+			if(!("subs" in this))
+				this.subs = {};
+			this.subs[key] = {
 				'fx': fx,
 				'format': format,
 				'help': () => {
-					this.console.output([
-						"Operation syntax:",
-						format + "\r\n" + "-".repeat(24),
-						"Available flags:"
-					]);
-					let fs = [];
-					for(let f in this.operations[key].flags)
-						fs.push(f + " ".repeat(24 - f.length) + this.operations[key].flags[f]);
-					this.console.output(fs);
+					let out = [];
+					if(format)
+						out.push("Command syntax:", format, "-".repeat(24));
+					out.push("Available flags:");
+					for(let f in flags)
+						out.push(f + " ".repeat(24 - f.length) + flags[f]);
+					this.console.output(out);
 				},
 				'flags': flags
 			};
@@ -73,17 +71,17 @@ class Command{
 
 	/**
 	 *  Function invoke
-	 *  	-> calls an operation and passes variables to it
-	 *  @param {String} operation -> operation to be called
+	 *  	-> calls an subcommand and passes variables to it
+	 *  @param {String} key -> subcommand to be called
 	 *  @param {Array} args -> arguments, Array is in order of user submission
 	 *  @param {{Array} flags -> flags, Array is in order of user submission
 	 */
 	invoke({key, args, flags}){
-		if(key && this.operations[key]){
+		if(key && this.subs[key]){
 			if(flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1){
-				this.operations[key].help();
+				this.subs[key].help();
 			} else {
-				this.operations[key].fx.call(this, args, flags);	
+				this.subs[key].fx.call(this, args, flags);	
 			}
 		} else {
 			this.default.call(this, args, flags);
@@ -108,15 +106,15 @@ class Command{
 
 	/**
 	 *  Function validateOp
-	 *  	-> validates arguments to be added to a new Operation
-	 *  @param {String} key -> operation name
-	 *  @param {Function} fx -> function to execute for operation
-	 *  @param {String} format -> reference to call this operation
-	 *    ex. "command operation <argument(s)> [flag(s)]"
+	 *  	-> validates arguments to be added to a new Subcommand
+	 *  @param {String} key -> subcommand name
+	 *  @param {Function} fx -> function to execute for subcommand
+	 *  @param {String} format -> reference to call this subcommand
+	 *    ex. "command subcommand <argument(s)> [flag(s)]"
 	 *  @param {Object} flags -> optional flags to alter fx's behavior
 	 *  @return {Boolean} -> returns true if valid, false otherwise
 	 */
-	static validateOp({key, fx, format, flags}){
+	static validateSub({key, fx, format, flags}){
 		if(typeof key !== "string"){
 			console.error("Invalid: key not of type String");
 		} else if(!(fx instanceof Function)){
@@ -141,13 +139,16 @@ class Command{
 } // End of Command class
 
 const TE_EMU_DEFAULTS = {
-	//v1.0 functionalities -> DOM Elements Integration
-	//commandLine: [".teemu-cl", "#teemu-cl"],
-	dialogWrapper: "code", 
-	windows: [".teemu-window", "#teemu-window"]
-	
-	//v1.1 functionalities
-	//scaffold: automatically add DOM elements to this.window
+	commandLine: [".teemu-cl", "#teemu-cl"],
+	outputEl: "code", 
+	windows: [".teemu-window", "#teemu-window"],
+	prompt: "$",
+	defaultCommands: {
+		clear: new Command(this, {
+			defaultFx: () => {this.clear();},
+			flat: true
+		})
+	}
 }; // End of const
 
 // II. Te_emu Class
@@ -158,10 +159,32 @@ class Te_emu{
 	 */
 	constructor(opts = {}){
 		this.options = Te_emu.extend(TE_EMU_DEFAULTS, opts);
-		this.commands = {};
+		this.commands = this.options.defaultCommands;
+
+		// Add event listeners for all commandLines
+		let cl = document.querySelectorAll(this.options.commandLine.join());
+		let self = this;
+		for(let i = 0; i < cl.length; i++){
+			cl[i].addEventListener('keypress', function(e){
+				if(e.which === 13){
+					self.output(self.options.prompt + " " + this.value);
+					self.parse(this.value);
+					this.value = "";
+				}
+			});
+		}
 	}
 
 	// A. Methods
+	
+	/**
+	 *  Getter cmd -> get a Command
+	 *  @param {String} 'key' -> keyword of Command to get
+	 *  @return {Object} -> Command if found, false otherwise
+	 */
+	cmd(key){
+		return (Boolean(this.commands[key]) ? this.commands[key] : false);
+	}
 
 	/**
 	 *  Function addCommand
@@ -221,15 +244,15 @@ class Te_emu{
 		if(typeof str === "string"){
 			var str = [str];
 		}
-		let w = document.querySelectorAll(this.options.windows.join());
+		let win = document.querySelectorAll(this.options.windows.join());
 
 		for(let i = 0; i < str.length; i++){
-			let newElement = document.createElement(this.options.dialogWrapper);
+			let newElement = document.createElement(this.options.outputEl);
 			let newOutput = document.createTextNode(str[i]);
 			newElement.appendChild(newOutput);
 
-			for(let j = 0; j < w.length; j++){
-				w[j].insertAdjacentHTML('beforeend', newElement.outerHTML);
+			for(let j = 0; j < win.length; j++){
+				win[j].insertAdjacentHTML('beforeend', newElement.outerHTML);
 			}
 		}
 	}
@@ -255,5 +278,14 @@ class Te_emu{
 			}
 		}
 		return a;
+	}
+
+	/**
+	 *  Function clear -> clear attached windows
+	 */
+	clear(){
+		let win = document.querySelectorAll(this.options.windows.join());
+		for(let i = 0; i < win.length; i++)
+			win[i].innerHTML = "";
 	}
 } // End of Te_emu class

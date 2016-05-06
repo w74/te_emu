@@ -12,7 +12,6 @@ gulp.task('js', () => {
 
 gulp.task('push', () => {
 	return gulp.src('dev/te_emu.js')
-		.pipe(rename('te_emu.js'))
 		.pipe(gulp.dest('dist'))
 		.pipe(uglify())
 		.pipe(rename('te_emu.min.js'))

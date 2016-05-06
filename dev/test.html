@@ -12,6 +12,7 @@
 </head>
 <body>
 	<div id="teemu-window">This is a #window</div>
+	<input type="text" id="teemu-cl">
 	<script type="text/javascript" src="te_emu.js"></script>
 	<script type="text/javascript" charset="utf-8" defer>
 		// Test scripts
@@ -23,7 +24,7 @@
 		t.addCommand({
 			key: 'runOps'
 		});
-		t.commands.runOps.addOperation({
+		t.cmd('runOps').addSub({
 			key: 'newOp',
 			fx: function(argsArr, flagsArr){
 				console.log("This is an operation of runOps");
@@ -35,7 +36,7 @@
 				"--hello": "Hi there!"
 			}
 		});
-		t.commands.runOps.addOperation({
+		t.cmd('runOps').addSub({
 			key: 'hello',
 			fx: function(argsArr, flagsArr){
 				var str = "Hello World";
