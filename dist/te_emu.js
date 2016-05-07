@@ -10,7 +10,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 *	@name: Te_emu.js
 *	@desc: A simple js library that emulates some basic features of a Linux terminal, especially from a visual aspect
 *	@author: Wolfram Rong
-*	@version: 1.0
+*	@version: 1.0 (May 02, 2016)
 *	@license: MPL-2.0
 *	@contents:
 *		I. Command Class
@@ -33,13 +33,11 @@ var Command = function () {
   */
 
 	function Command(console, _ref) {
-		var _this = this;
-
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
-			if (_this.flat) _this.console.output("Command is flat; no operations attached");else {
-				_this.console.output("Available Operations:");
-				_this.console.output(Object.keys(_this.operations).join(', '));
+			if (this.flat) this.console._output("Command is flat; no subcommands attached");else {
+				this.console._output("Available Subcommands:");
+				this.console._output(Object.keys(this.subs).join(', '));
 			}
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
@@ -53,65 +51,69 @@ var Command = function () {
 	// A. Methods
 
 	/**
-  * 	Function addOperation
-  * 		-> adds an user-defined operation to the command
-  *  @param {String} key -> operation name
-  *  @param {Function} fx -> function to execute for operation
-  *  @param {String} format -> reference to call this operation
-  *    ex. "command operation <argument(s)> [flag(s)]"
+  * 	Function addSub
+  * 		-> adds an user-defined subcommand to the command
+  *  @param {String} key -> subcommand name
+  *  @param {Function} fx -> function to execute for subcommand
+  *  @param {String} format -> reference to call this subcommand
+  *    ex. "command subcommand <argument(s)> [flag(s)]"
   *  @param {Object} flags -> optional flags to alter fx's behavior
   */
 
 
 	_createClass(Command, [{
-		key: "addOperation",
-		value: function addOperation(_ref2) {
-			var _this2 = this;
-
+		key: "addSub",
+		value: function addSub(_ref2) {
 			var key = _ref2.key;
 			var fx = _ref2.fx;
 			var format = _ref2.format;
 			var flags = _ref2.flags;
+			var force = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
 			if (this.flat) {
 				console.error("Command is flat");
-			} else if (Command.validateOp({ key: key, fx: fx, format: format, flags: flags })) {
-				if (!("operations" in this)) this.operations = {};
-				this.operations[key] = {
-					'fx': fx,
-					'format': format,
-					'help': function help() {
-						_this2.console.output(["Operation syntax:", format + "\r\n" + "-".repeat(24), "Available flags:"]);
-						var fs = [];
-						for (var f in _this2.operations[key].flags) {
-							fs.push(f + " ".repeat(24 - f.length) + _this2.operations[key].flags[f]);
-						}_this2.console.output(fs);
-					},
-					'flags': flags
-				};
+			} else if (Command.validateSub({ key: key, fx: fx, format: format, flags: flags })) {
+				if (!("subs" in this)) this.subs = {};
+				if (this.subs[key] && !force) {
+					console.error("Subcommand already exists");
+				} else {
+					this.subs[key] = {
+						'fx': fx,
+						'format': format,
+						'flags': flags,
+						'help': function help() {
+							var outArr = [];
+							if (format) outArr.push("Command syntax:", format, "-".repeat(24));
+							outArr.push("Available flags:");
+							for (var f in flags) {
+								outArr.push(f + " ".repeat(24 - f.length) + flags[f]);
+							}this.console._output(outArr);
+						}
+					};
+				}
 			}
 		}
 
 		/**
-   *  Function invoke
-   *  	-> calls an operation and passes variables to it
-   *  @param {String} operation -> operation to be called
+   *  Function _invoke
+   *  	-> calls an subcommand and passes variables to it
+   *  @param {String} key -> subcommand to be called
    *  @param {Array} args -> arguments, Array is in order of user submission
    *  @param {{Array} flags -> flags, Array is in order of user submission
    */
 
 	}, {
-		key: "invoke",
-		value: function invoke(_ref3) {
+		key: "_invoke",
+		value: function _invoke(_ref3) {
 			var key = _ref3.key;
 			var args = _ref3.args;
 			var flags = _ref3.flags;
 
-			if (key && this.operations[key]) {
+			if (key && this.subs[key]) {
 				if (flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1) {
-					this.operations[key].help();
+					this.subs[key].help.call(this);
 				} else {
-					this.operations[key].fx.call(this, args, flags);
+					this.subs[key].fx.call(this, args, flags);
 				}
 			} else {
 				this.default.call(this, args, flags);
@@ -142,18 +144,18 @@ var Command = function () {
 
 		/**
    *  Function validateOp
-   *  	-> validates arguments to be added to a new Operation
-   *  @param {String} key -> operation name
-   *  @param {Function} fx -> function to execute for operation
-   *  @param {String} format -> reference to call this operation
-   *    ex. "command operation <argument(s)> [flag(s)]"
+   *  	-> validates arguments to be added to a new Subcommand
+   *  @param {String} key -> subcommand name
+   *  @param {Function} fx -> function to execute for subcommand
+   *  @param {String} format -> reference to call this subcommand
+   *    ex. "command subcommand <argument(s)> [flag(s)]"
    *  @param {Object} flags -> optional flags to alter fx's behavior
    *  @return {Boolean} -> returns true if valid, false otherwise
    */
 
 	}, {
-		key: "validateOp",
-		value: function validateOp(_ref5) {
+		key: "validateSub",
+		value: function validateSub(_ref5) {
 			var key = _ref5.key;
 			var fx = _ref5.fx;
 			var format = _ref5.format;
@@ -165,8 +167,8 @@ var Command = function () {
 				console.error("Invalid: fx not a Function");
 			} else if (flags && flags instanceof Object && !(flags instanceof Array)) {
 				for (var f in flags) {
-					if (!/^-{1,2}/.test(f)) {
-						console.error("all flags start with either - or --");
+					if (!/^-{1,2}[a-zA-Z0-9]+/.test(f)) {
+						console.error("flags must start with - or -- and be at least one alphanumeric character long");
 						return false;
 					}
 					if (/^-h$|^--help$/.test(f)) {
@@ -187,9 +189,9 @@ var Command = function () {
 
 var TE_EMU_DEFAULTS = {
 	commandLine: [".teemu-cl", "#teemu-cl"],
-	dialogWrapper: "code",
+	outputEl: "code",
 	windows: [".teemu-window", "#teemu-window"],
-	prefix: "[user@te_emu ~]$ ",
+	prompt: "$",
 	defaultCommands: {
 		clear: new Command(undefined, {
 			defaultFx: function defaultFx() {
@@ -222,8 +224,8 @@ var Te_emu = function () {
 		for (var i = 0; i < cl.length; i++) {
 			cl[i].addEventListener('keypress', function (e) {
 				if (e.which === 13) {
-					self.output(self.options.prefix + this.value);
-					self.parse(this.value);
+					self._output(self.options.prompt + " " + this.value);
+					self._parse(this.value);
 					this.value = "";
 				}
 			});
@@ -233,39 +235,55 @@ var Te_emu = function () {
 	// A. Methods
 
 	/**
-  *  Function addCommand
-  *  	-> adds a new callable command to the terminal
-  *  @param {Object} obj -> object required to construct new Command
+  *  Getter cmd -> get a Command
+  *  @param {String} 'key' -> keyword of Command to get
+  *  @return {Object} -> Command if found, false otherwise
   */
 
 
 	_createClass(Te_emu, [{
+		key: "cmd",
+		value: function cmd(key) {
+			return Boolean(this.commands[key]) ? this.commands[key] : false;
+		}
+
+		/**
+   *  Function addCommand
+   *  	-> adds a new callable command to the terminal
+   *  @param {Object} obj -> object required to construct new Command
+   */
+
+	}, {
 		key: "addCommand",
 		value: function addCommand(obj) {
+			var force = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
 			// validates obj type of Object
 			if (!(obj instanceof Object) || obj instanceof Array) {
 				console.error("addCommand: type Object expected; type " + (typeof obj === "undefined" ? "undefined" : _typeof(obj)) + " received");
 			} else {
-				if (Command.validate(obj)) {
+				if (this.commands[obj.key] && !force) {
+					console.error("Command already exists");
+				} else if (Command.validate(obj)) {
 					this.commands[obj.key] = new Command(this, obj);
 				}
 			}
 		}
 
 		/**
-   *  Function parse
+   *  Function _parse
    *  	-> takes user inputted string and prepares it for invokation by Command Object
    *  @param  {String} str -> user input
    */
 
 	}, {
-		key: "parse",
-		value: function parse(str) {
+		key: "_parse",
+		value: function _parse(str) {
 			var s = str.split(" ");
 			var c = s.shift();
 			// check if command exists
 			if (!this.commands[c]) {
-				this.output(c + ": command not found");
+				this._output(c + ": command not found");
 				return;
 			}
 			if (!this.commands[c].flat) {
@@ -282,7 +300,7 @@ var Te_emu = function () {
 				}
 			}
 			// send data to Command Object and let it invoke appropriate response
-			this.commands[c].invoke({
+			this.commands[c]._invoke({
 				key: o,
 				flags: f,
 				args: a
@@ -290,21 +308,21 @@ var Te_emu = function () {
 		}
 
 		/**
-   *	Function output
+   *	Function _output
    * 		-> displays text to all windows as new DOM elements
    *  @param {String|Array} str -> message(s) to be displayed; allows HTML tags and entities
    */
 
 	}, {
-		key: "output",
-		value: function output(str) {
+		key: "_output",
+		value: function _output(str) {
 			if (typeof str === "string") {
 				var str = [str];
 			}
 			var win = document.querySelectorAll(this.options.windows.join());
 
 			for (var i = 0; i < str.length; i++) {
-				var newElement = document.createElement(this.options.dialogWrapper);
+				var newElement = document.createElement(this.options.outputEl);
 				var newOutput = document.createTextNode(str[i]);
 				newElement.appendChild(newOutput);
 
@@ -341,7 +359,7 @@ var Te_emu = function () {
 	}], [{
 		key: "extend",
 		value: function (_extend) {
-			function extend(_x, _x2) {
+			function extend(_x2, _x3) {
 				return _extend.apply(this, arguments);
 			}
 
