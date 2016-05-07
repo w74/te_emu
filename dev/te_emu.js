@@ -33,13 +33,11 @@ var Command = function () {
   */
 
 	function Command(console, _ref) {
-		var _this = this;
-
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
-			if (_this.flat) _this.console.output("Command is flat; no subcommands attached");else {
-				_this.console.output("Available Subcommands:");
-				_this.console.output(Object.keys(_this.subs).join(', '));
+			if (this.flat) this.console.output("Command is flat; no subcommands attached");else {
+				this.console.output("Available Subcommands:");
+				this.console.output(Object.keys(this.subs).join(', '));
 			}
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
@@ -66,30 +64,33 @@ var Command = function () {
 	_createClass(Command, [{
 		key: "addSub",
 		value: function addSub(_ref2) {
-			var _this2 = this;
-
 			var key = _ref2.key;
 			var fx = _ref2.fx;
 			var format = _ref2.format;
 			var flags = _ref2.flags;
+			var force = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
 			if (this.flat) {
 				console.error("Command is flat");
 			} else if (Command.validateSub({ key: key, fx: fx, format: format, flags: flags })) {
 				if (!("subs" in this)) this.subs = {};
-				this.subs[key] = {
-					'fx': fx,
-					'format': format,
-					'help': function help() {
-						var out = [];
-						if (format) out.push("Command syntax:", format, "-".repeat(24));
-						out.push("Available flags:");
-						for (var f in flags) {
-							out.push(f + " ".repeat(24 - f.length) + flags[f]);
-						}_this2.console.output(out);
-					},
-					'flags': flags
-				};
+				if (this.subs[key] && !force) {
+					console.error("Subcommand already exists");
+				} else {
+					this.subs[key] = {
+						'fx': fx,
+						'format': format,
+						'flags': flags,
+						'help': function help() {
+							var outArr = [];
+							if (format) outArr.push("Command syntax:", format, "-".repeat(24));
+							outArr.push("Available flags:");
+							for (var f in flags) {
+								outArr.push(f + " ".repeat(24 - f.length) + flags[f]);
+							}this.console.output(outArr);
+						}
+					};
+				}
 			}
 		}
 
@@ -110,7 +111,7 @@ var Command = function () {
 
 			if (key && this.subs[key]) {
 				if (flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1) {
-					this.subs[key].help();
+					this.subs[key].help.call(this);
 				} else {
 					this.subs[key].fx.call(this, args, flags);
 				}
@@ -166,8 +167,8 @@ var Command = function () {
 				console.error("Invalid: fx not a Function");
 			} else if (flags && flags instanceof Object && !(flags instanceof Array)) {
 				for (var f in flags) {
-					if (!/^-{1,2}/.test(f)) {
-						console.error("all flags start with either - or --");
+					if (!/^-{1,2}[a-zA-Z0-9]+/.test(f)) {
+						console.error("flags must start with - or -- and be at least one alphanumeric character long");
 						return false;
 					}
 					if (/^-h$|^--help$/.test(f)) {
@@ -255,11 +256,15 @@ var Te_emu = function () {
 	}, {
 		key: "addCommand",
 		value: function addCommand(obj) {
+			var force = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
 			// validates obj type of Object
 			if (!(obj instanceof Object) || obj instanceof Array) {
 				console.error("addCommand: type Object expected; type " + (typeof obj === "undefined" ? "undefined" : _typeof(obj)) + " received");
 			} else {
-				if (Command.validate(obj)) {
+				if (this.commands[obj.key] && !force) {
+					console.error("Command already exists");
+				} else if (Command.validate(obj)) {
 					this.commands[obj.key] = new Command(this, obj);
 				}
 			}
@@ -354,7 +359,7 @@ var Te_emu = function () {
 	}], [{
 		key: "extend",
 		value: function (_extend) {
-			function extend(_x, _x2) {
+			function extend(_x2, _x3) {
 				return _extend.apply(this, arguments);
 			}
 

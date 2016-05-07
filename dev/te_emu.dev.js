@@ -22,7 +22,7 @@ class Command{
 	 *  @param {Function} defaultFx -> fallback function, or if Command is "flat", the only executed function
 	 *  @param {Boolean} flat -> if defined, the Command will be "flat" and will only run the default Function
 	 */
-	constructor(console, {defaultFx = () => {
+	constructor(console, {defaultFx = function(){
 		if(this.flat)
 			this.console.output("Command is flat; no subcommands attached");
 		else{
@@ -46,26 +46,30 @@ class Command{
 	 *    ex. "command subcommand <argument(s)> [flag(s)]"
 	 *  @param {Object} flags -> optional flags to alter fx's behavior
 	 */
-	addSub({key, fx, format, flags}){
+	addSub({key, fx, format, flags}, force = false){
 		if(this.flat){
 			console.error("Command is flat");
 		} else if(Command.validateSub({key, fx, format, flags})){
 			if(!("subs" in this))
 				this.subs = {};
-			this.subs[key] = {
-				'fx': fx,
-				'format': format,
-				'help': () => {
-					let out = [];
-					if(format)
-						out.push("Command syntax:", format, "-".repeat(24));
-					out.push("Available flags:");
-					for(let f in flags)
-						out.push(f + " ".repeat(24 - f.length) + flags[f]);
-					this.console.output(out);
-				},
-				'flags': flags
-			};
+			if(this.subs[key] && !force){
+				console.error("Subcommand already exists");
+			} else {
+				this.subs[key] = {
+					'fx': fx,
+					'format': format,
+					'flags': flags,
+					'help': function(){
+						let outArr = [];
+						if(format)
+							outArr.push("Command syntax:", format, "-".repeat(24));
+						outArr.push("Available flags:");
+						for(let f in flags)
+							outArr.push(f + " ".repeat(24 - f.length) + flags[f]);
+						this.console.output(outArr);
+					}
+				};
+			}
 		}
 	}
 
@@ -79,7 +83,7 @@ class Command{
 	invoke({key, args, flags}){
 		if(key && this.subs[key]){
 			if(flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1){
-				this.subs[key].help();
+				this.subs[key].help.call(this);
 			} else {
 				this.subs[key].fx.call(this, args, flags);	
 			}
@@ -121,8 +125,8 @@ class Command{
 			console.error("Invalid: fx not a Function");
 		} else if(flags && (flags instanceof Object) && !(flags instanceof Array)){
 			for(let f in flags){
-				if(!/^-{1,2}/.test(f)){
-					console.error("all flags start with either - or --");
+				if(!/^-{1,2}[a-zA-Z0-9]+/.test(f)){
+					console.error("flags must start with - or -- and be at least one alphanumeric character long");
 					return false;
 				}
 				if(/^-h$|^--help$/.test(f)){
@@ -191,12 +195,14 @@ class Te_emu{
 	 *  	-> adds a new callable command to the terminal
 	 *  @param {Object} obj -> object required to construct new Command
 	 */
-	addCommand(obj){
+	addCommand(obj, force = false){
 		// validates obj type of Object
 		if(!(obj instanceof Object) || (obj instanceof Array)){
 			console.error("addCommand: type Object expected; type " + typeof obj + " received");
 		} else {
-			if(Command.validate(obj)){
+			if(this.commands[obj.key] && !force){
+				console.error("Command already exists");
+			} else if(Command.validate(obj)){
 				this.commands[obj.key] = new Command(this, obj);
 			}
 		}
