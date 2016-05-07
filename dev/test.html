@@ -28,7 +28,7 @@
 			key: 'newOp',
 			fx: function(argsArr, flagsArr){
 				console.log("This is an operation of runOps");
-				this.console.output('Execution complete');
+				this.console._output('Execution complete');
 			},
 			format: "runOps newOp <argument> [flags]",
 			flags: {
@@ -44,7 +44,7 @@
 					str += '!';
 				if(flagsArr.indexOf('-q') > -1)
 					str += '?';
-				this.console.output(str);
+				this.console._output(str);
 			},
 			format: "runOps hello [flags]",
 			flags: {

@@ -10,7 +10,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 *	@name: Te_emu.js
 *	@desc: A simple js library that emulates some basic features of a Linux terminal, especially from a visual aspect
 *	@author: Wolfram Rong
-*	@version: 1.0
+*	@version: 1.0 (May 02, 2016)
 *	@license: MPL-2.0
 *	@contents:
 *		I. Command Class
@@ -35,9 +35,9 @@ var Command = function () {
 	function Command(console, _ref) {
 		var _ref$defaultFx = _ref.defaultFx;
 		var defaultFx = _ref$defaultFx === undefined ? function () {
-			if (this.flat) this.console.output("Command is flat; no subcommands attached");else {
-				this.console.output("Available Subcommands:");
-				this.console.output(Object.keys(this.subs).join(', '));
+			if (this.flat) this.console._output("Command is flat; no subcommands attached");else {
+				this.console._output("Available Subcommands:");
+				this.console._output(Object.keys(this.subs).join(', '));
 			}
 		} : _ref$defaultFx;
 		var _ref$flat = _ref.flat;
@@ -87,7 +87,7 @@ var Command = function () {
 							outArr.push("Available flags:");
 							for (var f in flags) {
 								outArr.push(f + " ".repeat(24 - f.length) + flags[f]);
-							}this.console.output(outArr);
+							}this.console._output(outArr);
 						}
 					};
 				}
@@ -95,7 +95,7 @@ var Command = function () {
 		}
 
 		/**
-   *  Function invoke
+   *  Function _invoke
    *  	-> calls an subcommand and passes variables to it
    *  @param {String} key -> subcommand to be called
    *  @param {Array} args -> arguments, Array is in order of user submission
@@ -103,8 +103,8 @@ var Command = function () {
    */
 
 	}, {
-		key: "invoke",
-		value: function invoke(_ref3) {
+		key: "_invoke",
+		value: function _invoke(_ref3) {
 			var key = _ref3.key;
 			var args = _ref3.args;
 			var flags = _ref3.flags;
@@ -224,8 +224,8 @@ var Te_emu = function () {
 		for (var i = 0; i < cl.length; i++) {
 			cl[i].addEventListener('keypress', function (e) {
 				if (e.which === 13) {
-					self.output(self.options.prompt + " " + this.value);
-					self.parse(this.value);
+					self._output(self.options.prompt + " " + this.value);
+					self._parse(this.value);
 					this.value = "";
 				}
 			});
@@ -271,19 +271,19 @@ var Te_emu = function () {
 		}
 
 		/**
-   *  Function parse
+   *  Function _parse
    *  	-> takes user inputted string and prepares it for invokation by Command Object
    *  @param  {String} str -> user input
    */
 
 	}, {
-		key: "parse",
-		value: function parse(str) {
+		key: "_parse",
+		value: function _parse(str) {
 			var s = str.split(" ");
 			var c = s.shift();
 			// check if command exists
 			if (!this.commands[c]) {
-				this.output(c + ": command not found");
+				this._output(c + ": command not found");
 				return;
 			}
 			if (!this.commands[c].flat) {
@@ -300,7 +300,7 @@ var Te_emu = function () {
 				}
 			}
 			// send data to Command Object and let it invoke appropriate response
-			this.commands[c].invoke({
+			this.commands[c]._invoke({
 				key: o,
 				flags: f,
 				args: a
@@ -308,14 +308,14 @@ var Te_emu = function () {
 		}
 
 		/**
-   *	Function output
+   *	Function _output
    * 		-> displays text to all windows as new DOM elements
    *  @param {String|Array} str -> message(s) to be displayed; allows HTML tags and entities
    */
 
 	}, {
-		key: "output",
-		value: function output(str) {
+		key: "_output",
+		value: function _output(str) {
 			if (typeof str === "string") {
 				var str = [str];
 			}

@@ -2,7 +2,7 @@
 *	@name: Te_emu.js
 *	@desc: A simple js library that emulates some basic features of a Linux terminal, especially from a visual aspect
 *	@author: Wolfram Rong
-*	@version: 1.0
+*	@version: 1.0 (May 02, 2016)
 *	@license: MPL-2.0
 *	@contents:
 *		I. Command Class
@@ -24,10 +24,10 @@ class Command{
 	 */
 	constructor(console, {defaultFx = function(){
 		if(this.flat)
-			this.console.output("Command is flat; no subcommands attached");
+			this.console._output("Command is flat; no subcommands attached");
 		else{
-			this.console.output("Available Subcommands:");
-			this.console.output(Object.keys(this.subs).join(', '));
+			this.console._output("Available Subcommands:");
+			this.console._output(Object.keys(this.subs).join(', '));
 		}
 	}, flat = false}){
 		this.default = defaultFx,
@@ -66,7 +66,7 @@ class Command{
 						outArr.push("Available flags:");
 						for(let f in flags)
 							outArr.push(f + " ".repeat(24 - f.length) + flags[f]);
-						this.console.output(outArr);
+						this.console._output(outArr);
 					}
 				};
 			}
@@ -74,13 +74,13 @@ class Command{
 	}
 
 	/**
-	 *  Function invoke
+	 *  Function _invoke
 	 *  	-> calls an subcommand and passes variables to it
 	 *  @param {String} key -> subcommand to be called
 	 *  @param {Array} args -> arguments, Array is in order of user submission
 	 *  @param {{Array} flags -> flags, Array is in order of user submission
 	 */
-	invoke({key, args, flags}){
+	_invoke({key, args, flags}){
 		if(key && this.subs[key]){
 			if(flags.indexOf("-h") > -1 || flags.indexOf("--help") > -1){
 				this.subs[key].help.call(this);
@@ -171,8 +171,8 @@ class Te_emu{
 		for(let i = 0; i < cl.length; i++){
 			cl[i].addEventListener('keypress', function(e){
 				if(e.which === 13){
-					self.output(self.options.prompt + " " + this.value);
-					self.parse(this.value);
+					self._output(self.options.prompt + " " + this.value);
+					self._parse(this.value);
 					this.value = "";
 				}
 			});
@@ -209,16 +209,16 @@ class Te_emu{
 	}
 
 	/**
-	 *  Function parse
+	 *  Function _parse
 	 *  	-> takes user inputted string and prepares it for invokation by Command Object
 	 *  @param  {String} str -> user input
 	 */
-	parse(str){
+	_parse(str){
 		let s = str.split(" ");
 		var c = s.shift();
 		// check if command exists
 		if(!this.commands[c]){
-			this.output(c + ": command not found");
+			this._output(c + ": command not found");
 			return;
 		}
 		if(!this.commands[c].flat){
@@ -234,7 +234,7 @@ class Te_emu{
 			}
 		}
 		// send data to Command Object and let it invoke appropriate response
-		this.commands[c].invoke({
+		this.commands[c]._invoke({
 			key: o,
 			flags: f,
 			args: a
@@ -242,11 +242,11 @@ class Te_emu{
 	}
 
 	/**
-	 *	Function output
+	 *	Function _output
 	 * 		-> displays text to all windows as new DOM elements
 	 *  @param {String|Array} str -> message(s) to be displayed; allows HTML tags and entities
 	 */
-	output(str){
+	_output(str){
 		if(typeof str === "string"){
 			var str = [str];
 		}

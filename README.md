@@ -5,12 +5,12 @@
 + [Usage](https://github.com/w74/te_emu#usage)
     * [HTML](https://github.com/w74/te_emu#html)
     * [JS](https://github.com/w74/te_emu#js)
-    * [Notes]()
-+ [Best Practices](https://github.com/w74/te_emu)
-    * [PSHHH, I DO WHAT I WANT](https://github.com/w74/te_emu)
-    * [Templates](https://github.com/w74/te_emu)
-+ [Contributing](https://github.com/w74/te_emu)
-    * [What's Next?](https://github.com/w74/te_emu)
+    * [Notes](https://github.com/w74/te_emu#notes)
++ [Best Practices](https://github.com/w74/te_emu#recommended-practices)
+    * [PSHHH, I DO WHAT I WANT](https://github.com/w74/te_emu#pshhh-i-do-what-i-want)
+    * [Templates](https://github.com/w74/te_emu#templates)
++ [Contributing](https://github.com/w74/te_emu#contributing)
+    * [What's Next?](https://github.com/w74/te_emu#whats-next)
 
 ## What's Te\_emu?
 **Te\_emu** is a terminal emulator meant to visually replicate the linux terminal on a webpage. It's main purpose is to allow function calls via the terminal syntax (`function argument1 argument2 --flag1 --flag2 etc.`). It is written in vanilla JS, has zero dependencies, and is less than 5kb.
@@ -31,23 +31,23 @@ A "flat" Command has no Subcommands. For example, in `rm /path/to/file.js`, `rm`
 #### HTML
 + Create a `<div>` with a unique class or id (default `teemu-window`) to house the terminal input/output.
 ```html
-    <div id="teemu-window"></div>           <!-- or -->
-    <div class="teemu-window"></div>        <!-- or -->
-    <div id="unique-window-id"></div>       <!-- or -->
-    <div class="unique-window-class"></div>
+<div id="teemu-window"></div>           <!-- or -->
+<div class="teemu-window"></div>        <!-- or -->
+<div id="unique-window-id"></div>       <!-- or -->
+<div class="unique-window-class"></div>
 ```
 + Create an `<input type="text">` field with a unique class or id (default `teemu-cl`) for the user to interact with. A `<form>` element **is not required** since no submit events occur, but you can include the `<form>` element if you want to be semantic.
 ```html
-    <input type="text" id="teemu-cl">           <!-- or -->
-    <input type="text" class="teemu-cl">        <!-- or -->
-    <input type="text" class="unique-cl-id">    <!-- or -->
-    <input type="text" class="unique-cl-class">
+<input type="text" id="teemu-cl">           <!-- or -->
+<input type="text" class="teemu-cl">        <!-- or -->
+<input type="text" class="unique-cl-id">    <!-- or -->
+<input type="text" class="unique-cl-class">
 ```
 
 #### JS
 + Instantiate a `new Te_emu` Object.
 ```javascript
-    var te_emu = new Te_emu({options: 'see table below'});
+var te_emu = new Te_emu({options: 'see table below'});
 ```
 | Options   | Req?  | Default   | Description   |
 |:--- |:--- |:--- |:--- |
@@ -58,7 +58,7 @@ A "flat" Command has no Subcommands. For example, in `rm /path/to/file.js`, `rm`
 
 + Add a new `Command` Object. Set `force` to `true` if it is acceptable to overwrite a Command with the same `key`.
 ```javascript
-    te_emu.addCommand({options: 'see table below'}, force = false);
+te_emu.addCommand({options: 'see table below'}, force = false);
 ```
 | Options   | Req?  | Default   | Description   |
 |:--- |:--- |:--- |:--- |
@@ -68,7 +68,7 @@ A "flat" Command has no Subcommands. For example, in `rm /path/to/file.js`, `rm`
 
 + Add a new Subcommand. Set `force` to `true` if it is acceptable to overwrite a Subcommand with the same `key`.
 ```javascript
-    te_emu.cmd('subcommand').addSub({options: 'see table below'}, force = false)
+te_emu.cmd('subcommand').addSub({options: 'see table below'}, force = false)
 ```
 | Options   | Req?  | Default   | Description   |
 |:--- |:--- |:--- |:--- |
@@ -83,7 +83,7 @@ A "flat" Command has no Subcommands. For example, in `rm /path/to/file.js`, `rm`
 3. Flags must begin with either `-` or `--`, be at least one alphanumeric character long, and can't contain hyphens.
 4. The `-h` and `--help` flags are reserved and cannot be functionally set.
 5. Flags cannot chain; therefore `-Chain` will be interpreted as one flag, not five.
-6. `<arguments>` and `[flags]` are passed in the order presented. For example, `command arg1 arg3 --flag2 arg2 --flag1` will result in `<arguments> = [arg1, arg3, arg2]` and `[flags] = [--flag2, --flag1]`.
+6. `<arguments>` and `[flags]` are passed in the order presented. For example, `command arg1 --flag2 arg2 --flag1` will result in `<arguments> = [arg1, arg2]` and `[flags] = [--flag2, --flag1]`.
 7. When instantiating a **Te\_emu** object, there is a `defaultCommands` object you can also pass. However, that will remove all of the "shell commands" like `clear` and `cd`.
 
 ## Recommended Practices
@@ -99,46 +99,69 @@ Certain aspects of **Te\_emu** are purposefully loosely defined so that the deve
     + Set the `flat` property of the Command to `false` and, during the `.addSub()` method, set the `key` to a flag. As long as the flag appears directly after the Command in the command line, it'll be interpreted as a Subcommand.
     + To create: `...addSub({'key': '-F', ...})`
     + To invoke: `command -F <arguments> [other flags]`
-* You can make your flags read `--F` or `-flag` if you really wish.
+* You can make your flags read `--F` or `-flag` if you really wish to.
 
 #### Templates
 Here are some templates based off of the Recommended Practices.
 
 **Adding a Command**
 ```javascript
-    myTe_emu.addCommand({
-        'key': 'commandName',
-        // 'defaultFx': function(){},
-        // 'flat': true
-    });
+myTe_emu.addCommand({
+    'key': 'commandName',
+    // 'defaultFx': function(){},
+    // 'flat': true
+});
 ```
 
 **Adding a Subcommand**
 ```javascript
-    myTe_emu.cmd('commandName').addSub({
-        'key': "subName",
-        'format': "commandName subName <arg1 arg2> [flags]",
-        'fx': function(argsArray, flagsArray){
-            // 'this' references the Command Object that the Subcommand belongs to
-            
-            /* code to handle [argsArray] */
+myTe_emu.cmd('commandName').addSub({
+    'key': "subName",
+    'format': "commandName subName <arg1 arg2> [flags]",
+    'fx': function(argsArray, flagsArray){
+        // 'this' references the Command Object that the Subcommand belongs to
+        
+        /* code to handle [argsArray] */
 
-            // if multiple flags can be executed
-            if(flagsArray.indexOf('--F1') > -1){ /* code; */ }
-            if(flagsArray.indexOf('--F2') > -1){ /* code; */ }
-            // ...
+        // if multiple flags can be executed
+        if(flagsArray.indexOf('--F1') > -1){ /* code; */ }
+        if(flagsArray.indexOf('--F2') > -1){ /* code; */ }
+        // ...
 
-            // if only one flag can be executed
-            switch(flagsArray[0]){
-                case '--F1': /* code; */ break;
-                case '--F2': /* code; */ break;
-                // ...
-            }
-        },
-        'flags': {
-            "--F1": "I am flag #1",
-            "--F2": "I am flag #2",
+        // if only one flag can be executed
+        switch(flagsArray[0]){
+            case '--F1': /* code; */ break;
+            case '--F2': /* code; */ break;
             // ...
         }
-    });
+    },
+    'flags': {
+        "--F1": "I am flag #1",
+        "--F2": "I am flag #2"
+        // ...
+    }
+});
 ```
+
+## Contributing
+Clone the repo onto local machine, open terminal in folder, and run `npm up` to install all dev dependencies.
+
+Any help adding new features or fixing errors is greatly appreciated. I am reachable via [wolfram.rong@gmail.com](mailto:wolfram.rong@gmail.com) for collaboration.
+
+#### What's Next?
+Some additional stuff I want to implement (in no particular order):
+1. Simulate Directory Trees
+    * Being able to `cd` and `ls` through a JSON file like a directory tree
+    * Being able to `mkdir` and `rmdir` sections of said JSON file
+    * Being able to `touch` and `rm` key:values of said JSON file
+    * Having `prompt` keep track and display current location
+    * Updating the JSON file (after implementing Sudo)
+2. Sudo
+    * Allowing password-protected actions
+    * "Blind" password typing
+3. History
+    * Users can use Up and Down arrows to navigate previously typed Commands
+4. Email
+    * Allow user to use `email` Command to send me an email
+5. Minigames
+    * Maybe a text-based minigame with an AI, like nim or something simple
