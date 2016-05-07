@@ -6,7 +6,7 @@
     * [HTML](https://github.com/w74/te_emu#html)
     * [JS](https://github.com/w74/te_emu#js)
     * [Notes](https://github.com/w74/te_emu#notes)
-+ [Best Practices](https://github.com/w74/te_emu#recommended-practices)
++ [Recommended Practices](https://github.com/w74/te_emu#recommended-practices)
     * [PSHHH, I DO WHAT I WANT](https://github.com/w74/te_emu#pshhh-i-do-what-i-want)
     * [Templates](https://github.com/w74/te_emu#templates)
 + [Contributing](https://github.com/w74/te_emu#contributing)
@@ -144,24 +144,25 @@ myTe_emu.cmd('commandName').addSub({
 ```
 
 ## Contributing
-Clone the repo onto local machine, open terminal in folder, and run `npm up` to install all dev dependencies.
+Clone the repo onto local machine, open location in terminal, and run `npm up` to install all dev dependencies.
 
-Any help adding new features or fixing errors is greatly appreciated. I am reachable via [wolfram.rong@gmail.com](mailto:wolfram.rong@gmail.com) for collaboration.
+Any help adding new features, doing code tune-ups, or fixing errors is greatly appreciated. I am reachable via [wolfram.rong@gmail.com](mailto:wolfram.rong@gmail.com) for collaboration.
 
 #### What's Next?
 Some additional stuff I want to implement (in no particular order):
-1. Simulate Directory Trees
+
++ Simulate Directory Trees
     * Being able to `cd` and `ls` through a JSON file like a directory tree
     * Being able to `mkdir` and `rmdir` sections of said JSON file
     * Being able to `touch` and `rm` key:values of said JSON file
     * Having `prompt` keep track and display current location
     * Updating the JSON file (after implementing Sudo)
-2. Sudo
++ Sudo
     * Allowing password-protected actions
     * "Blind" password typing
-3. History
++ History
     * Users can use Up and Down arrows to navigate previously typed Commands
-4. Email
++ Email
     * Allow user to use `email` Command to send me an email
-5. Minigames
++ Minigames
     * Maybe a text-based minigame with an AI, like nim or something simple
